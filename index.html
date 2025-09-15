@@ -20,7 +20,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/handpose"></script>
 </head>
 <body>
-<div id="hint">Hiroマーカーに向けて、親指＋人差し指でタップ操作。指先座標を表示。</div>
+<div id="hint">Hiroマーカーに向けて、親指＋人差し指をくっつけてタップ操作。座標が表示されます。</div>
 <video id="videoElement" autoplay playsinline></video>
 
 <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
@@ -41,7 +41,10 @@ let clicked = false;
 
 // カメラアクセス
 navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-.then(stream => { video.srcObject = stream; })
+.then(stream => { 
+  video.srcObject = stream; 
+  video.play();
+})
 .catch(err => { alert("カメラアクセス不可: " + err); });
 
 // MediaPipe Handpose モデル読み込み
@@ -50,33 +53,38 @@ handpose.load().then(loadedModel => {
   detectHands();
 });
 
+// 手の検出ループ
 async function detectHands() {
-  if (model && video.readyState === 4) {
+  if (model && video.readyState >= 2) { // video再生確認
     const predictions = await model.estimateHands(video);
     if (predictions.length > 0) {
       const hand = predictions[0];
       const thumbTip = hand.annotations.thumb[3];
       const indexTip = hand.annotations.indexFinger[3];
 
-      // 指先座標をパネルに表示
-      const avgX = ((thumbTip[0]+indexTip[0])/2).toFixed(0);
-      const avgY = ((thumbTip[1]+indexTip[1])/2).toFixed(0);
-      panelText.setAttribute('value', `X:${avgX} Y:${avgY}`);
+      // 座標を正規化して表示
+      if (video.videoWidth && video.videoHeight) {
+        const avgX = ((thumbTip[0]+indexTip[0])/2 / video.videoWidth * 100).toFixed(0);
+        const avgY = ((thumbTip[1]+indexTip[1])/2 / video.videoHeight * 100).toFixed(0);
+        panelText.setAttribute('value', `X:${avgX}% Y:${avgY}%`);
+      }
 
       // タップ判定
       const dx = thumbTip[0] - indexTip[0];
       const dy = thumbTip[1] - indexTip[1];
       const distance = Math.sqrt(dx*dx + dy*dy);
-      const clickThreshold = 30;
+      const clickThreshold = 30; // タップ判定距離
 
       if (distance < clickThreshold && !clicked) {
         clicked = true;
         panelText.setAttribute('value', 'Clicked! Loading...');
-        // 画面切り替え（例として3秒後に別ページへ）
+        console.log('Panel clicked!');
+        // 画面切り替え（例として1秒後に別ページへ）
         setTimeout(()=>{ window.location.href = 'https://example.com'; }, 1000);
       } else if (distance >= clickThreshold && clicked) {
-        clicked = false;
+        clicked = false; // 指を離したら再度クリック可能
       }
+
     } else {
       panelText.setAttribute('value', 'X:0 Y:0');
       clicked = false;
