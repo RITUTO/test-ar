@@ -1,60 +1,74 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Handpose Test</title>
-<style>
-  body { margin:0; font-family:sans-serif; }
-  video { width:100%; height:auto; transform: scaleX(-1); } /* 前面鏡像表示 */
-  #info {
-    position: fixed; top:10px; left:10px;
-    background: rgba(255,255,255,0.8); padding:6px 10px; border-radius:6px; z-index:10;
-  }
-</style>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core"></script>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter"></script>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/handpose"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hand Landmarks Detection</title>
+  <style>
+    body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f0f0f0; }
+    video { transform: scaleX(-1); border: 1px solid #ccc; }
+    canvas { position: absolute; }
+  </style>
 </head>
 <body>
-<div id="info">Hands detected: 0<br>X: 0 Y: 0</div>
-<video id="video" autoplay playsinline></video>
+  <video id="video" autoplay playsinline></video>
+  <canvas id="canvas"></canvas>
 
-<script>
-const video = document.getElementById('video');
-const info = document.getElementById('info');
-let model = null;
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/handpose"></script>
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let model;
 
-// カメラ起動（背面カメラ）
-navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-.then(stream => { 
-  video.srcObject = stream;
-  video.play();
-  console.log("Camera started:", video.videoWidth, video.videoHeight);
-})
-.catch(err => { alert("カメラアクセス不可: " + err); });
-
-// モデルロード
-handpose.load().then(loadedModel => {
-  model = loadedModel;
-  detectHands();
-});
-
-async function detectHands() {
-  if (model && video.readyState >= 2) {
-    const predictions = await model.estimateHands(video);
-    info.innerHTML = `Hands detected: ${predictions.length}`;
-    if (predictions.length > 0) {
-      const hand = predictions[0];
-      const thumbTip = hand.annotations.thumb[3];
-      const indexTip = hand.annotations.indexFinger[3];
-      const avgX = ((thumbTip[0]+indexTip[0])/2).toFixed(0);
-      const avgY = ((thumbTip[1]+indexTip[1])/2).toFixed(0);
-      info.innerHTML += `<br>X: ${avgX} Y: ${avgY}`;
+    // カメラの設定
+    async function setupCamera() {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }
+      });
+      video.srcObject = stream;
+      await new Promise(resolve => {
+        video.onloadedmetadata = () => { resolve(video); };
+      });
+      video.play();
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
     }
-  }
-  requestAnimationFrame(detectHands);
-}
-</script>
+
+    // モデルの読み込み
+    async function loadModel() {
+      model = await handpose.load();
+      detectHands();
+    }
+
+    // 手の検出
+    async function detectHands() {
+      if (model && video.readyState === 4) {
+        const predictions = await model.estimateHands(video);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (predictions.length > 0) {
+          predictions.forEach(prediction => {
+            prediction.landmarks.forEach(([x, y, z]) => {
+              ctx.beginPath();
+              ctx.arc(x, y, 5, 0, 2 * Math.PI);
+              ctx.fillStyle = 'red';
+              ctx.fill();
+            });
+          });
+        }
+      }
+      requestAnimationFrame(detectHands);
+    }
+
+    // 初期化
+    async function init() {
+      await setupCamera();
+      loadModel();
+    }
+
+    init();
+  </script>
 </body>
 </html>
