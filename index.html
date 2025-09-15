@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>iOS対応 マーカーAR + Hand Tracking Vision UI</title>
+<title>iOS対応 マーカーAR + Hand Pinch Vision UI</title>
 <style>
   body { margin:0; overflow:hidden; font-family:sans-serif; }
   #hint {
@@ -22,7 +22,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/handpose"></script>
 </head>
 <body>
-<div id="hint">Hiroマーカーをカメラに向けてください。指でパネルをタッチして色が変わります。</div>
+<div id="hint">Hiroマーカーをカメラに向けて、親指と人差し指でピンチ操作してください。</div>
 <video id="videoElement" autoplay playsinline></video>
 
 <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
@@ -30,7 +30,7 @@
   <a-marker preset="hiro">
     <!-- Vision風パネル -->
     <a-plane id="panel" position="0 0.5 0" width="0.6" height="0.4" color="#ffffff" opacity="0.9">
-      <a-text id="panelText" value="Touch Me" color="#000000" align="center" width="2" position="0 0 0.01"></a-text>
+      <a-text id="panelText" value="Pinch Me" color="#000000" align="center" width="2" position="0 0 0.01"></a-text>
     </a-plane>
   </a-marker>
   <a-entity camera></a-entity>
@@ -57,20 +57,26 @@ async function detectHands() {
   if (model && video.readyState === 4) {
     const predictions = await model.estimateHands(video);
     if (predictions.length > 0) {
-      // 指先座標 (ランドマーク 8 = 人差し指先)
-      const tip = predictions[0].annotations.indexFinger[3]; // [x, y, z]
-      const x = tip[0]; // video座標
-      const y = tip[1];
-      
-      // パネル座標と照合（簡易2D判定）
-      const panelRect = { x: video.videoWidth/2, y: video.videoHeight/2, width: 200, height: 120 };
-      if (Math.abs(x - panelRect.x) < panelRect.width/2 && Math.abs(y - panelRect.y) < panelRect.height/2) {
-        panel.setAttribute('color', '#ffcc00'); // タッチしたら色変更
-      } else {
-        panel.setAttribute('color', '#ffffff');
-      }
-    } else {
-      panel.setAttribute('color', '#ffffff');
+      const hand = predictions[0];
+
+      // 指先ランドマーク
+      const thumbTip = hand.annotations.thumb[3];    // [x, y, z]
+      const indexTip = hand.annotations.indexFinger[3];
+
+      // ピンチ距離計算
+      const dx = thumbTip[0] - indexTip[0];
+      const dy = thumbTip[1] - indexTip[1];
+      const distance = Math.sqrt(dx*dx + dy*dy);
+
+      // ピンチ判定でパネル拡大縮小
+      const minDist = 30; // ピンチ最小距離
+      const maxDist = 150; // 離すと元のサイズ
+      let scale = 1;
+      if (distance < minDist) scale = 0.7;
+      else if (distance > maxDist) scale = 1;
+      else scale = 0.7 + (distance - minDist) / (maxDist - minDist) * 0.3;
+      panel.setAttribute('scale', `${scale} ${scale} ${scale}`);
+
     }
   }
   requestAnimationFrame(detectHands);
