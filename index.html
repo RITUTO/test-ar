@@ -3,72 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hand Landmarks Detection</title>
-  <style>
-    body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f0f0f0; }
-    video { transform: scaleX(-1); border: 1px solid #ccc; }
-    canvas { position: absolute; }
-  </style>
+  <title>AR.js マーカー AR</title>
+  <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.js"></script>
 </head>
-<body>
-  <video id="video" autoplay playsinline></video>
-  <canvas id="canvas"></canvas>
-
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/handpose"></script>
-  <script>
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    let model;
-
-    // カメラの設定
-    async function setupCamera() {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
-      });
-      video.srcObject = stream;
-      await new Promise(resolve => {
-        video.onloadedmetadata = () => { resolve(video); };
-      });
-      video.play();
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-    }
-
-    // モデルの読み込み
-    async function loadModel() {
-      model = await handpose.load();
-      detectHands();
-    }
-
-    // 手の検出
-    async function detectHands() {
-      if (model && video.readyState === 4) {
-        const predictions = await model.estimateHands(video);
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        if (predictions.length > 0) {
-          predictions.forEach(prediction => {
-            prediction.landmarks.forEach(([x, y, z]) => {
-              ctx.beginPath();
-              ctx.arc(x, y, 5, 0, 2 * Math.PI);
-              ctx.fillStyle = 'red';
-              ctx.fill();
-            });
-          });
-        }
-      }
-      requestAnimationFrame(detectHands);
-    }
-
-    // 初期化
-    async function init() {
-      await setupCamera();
-      loadModel();
-    }
-
-    init();
-  </script>
+<body style="margin: 0; overflow: hidden;">
+  <a-scene embedded arjs>
+    <a-marker preset="hiro">
+      <a-box position="0 0.5 0" material="color: red;"></a-box>
+    </a-marker>
+    <a-entity camera></a-entity>
+  </a-scene>
 </body>
 </html>
