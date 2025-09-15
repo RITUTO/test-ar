@@ -3,93 +3,50 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>固定Vision風UI AR</title>
+<title>iOS対応 Vision風マーカーAR</title>
 <style>
   body { margin: 0; overflow: hidden; font-family: sans-serif; }
-  #console {
+  .hint {
     position: fixed;
-    right: 0; bottom: 0;
-    width: 300px; height: 200px;
-    background: rgba(0,0,0,0.7);
-    color: #fff;
-    font-size: 12px;
-    padding: 6px;
-    overflow-y: auto;
+    top: 10px;
+    left: 10px;
+    background: rgba(255,255,255,0.8);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-family: sans-serif;
     z-index: 10;
   }
 </style>
+<!-- A-Frame -->
+<script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+<!-- AR.js -->
+<script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.js"></script>
 </head>
 <body>
+<div class="hint">Hiroマーカーをカメラに向けてください</div>
 
-<div id="console">Console:</div>
-
-<script type="module">
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
-import { ARButton } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/webxr/ARButton.js';
-
-// 簡易コンソール
-const log = msg => {
-  const consoleEl = document.getElementById('console');
-  consoleEl.innerHTML += '<br>' + msg;
-  consoleEl.scrollTop = consoleEl.scrollHeight;
-};
-
-// シーンとレンダラー
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera();
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.xr.enabled = true;
-document.body.appendChild(renderer.domElement);
-
-// ARボタン（hit-testなし）
-document.body.appendChild(ARButton.createButton(renderer, {
-  optionalFeatures: []  // hit-testなし
-}));
-
-log('ARボタン表示完了');
-
-// 光源
-const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
-scene.add(light);
-
-// Vision風UIパネル作成関数
-const createPanel = (x, y, color, text) => {
-  const geometry = new THREE.PlaneGeometry(1.0, 0.6); // 大きくして見やすく
-  const material = new THREE.MeshBasicMaterial({ color: color, opacity: 0.9, transparent: true });
-  const panel = new THREE.Mesh(geometry, material);
+<a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
   
-  // テキスト用キャンバス
-  const canvas = document.createElement('canvas');
-  canvas.width = 512; canvas.height = 256;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0,0,512,256);
-  ctx.fillStyle = '#000000';
-  ctx.font = "40px sans-serif";
-  ctx.fillText(text, 50, 130);
-  material.map = new THREE.CanvasTexture(canvas);
+  <!-- マーカー -->
+  <a-marker preset="hiro">
+    <!-- Vision風パネル1 -->
+    <a-plane position="0 0.5 0" width="0.6" height="0.4" color="#ffffff" opacity="0.9">
+      <a-text value="Hello AR UI" color="#000000" align="center" width="2" position="0 0 0.01"></a-text>
+    </a-plane>
 
-  // カメラの子にして常にカメラ前に表示
-  camera.add(panel);
-  panel.position.set(x, y, -1);  // カメラ前1m
-  return panel;
-};
+    <!-- Vision風パネル2 -->
+    <a-plane position="0.7 0.5 0" width="0.5" height="0.3" color="#ccffcc" opacity="0.9">
+      <a-text value="Second Panel" color="#000000" align="center" width="1.5" position="0 0 0.01"></a-text>
+    </a-plane>
 
-// 複数パネル作成
-createPanel(0, 0.2, 0xffffff, "Panel 1");
-createPanel(0.8, 0.1, 0xccffcc, "Panel 2");
-createPanel(-0.8, 0.1, 0xffcccc, "Panel 3");
+    <!-- Vision風パネル3 -->
+    <a-plane position="-0.7 0.5 0" width="0.5" height="0.3" color="#ffcccc" opacity="0.9">
+      <a-text value="Third Panel" color="#000000" align="center" width="1.5" position="0 0 0.01"></a-text>
+    </a-plane>
+  </a-marker>
 
-log('パネル作成完了');
-
-// レンダリングループ
-renderer.setAnimationLoop(() => {
-  renderer.render(scene, camera);
-});
-
-log('レンダリング開始');
-</script>
-
+  <!-- カメラ -->
+  <a-entity camera></a-entity>
+</a-scene>
 </body>
 </html>
